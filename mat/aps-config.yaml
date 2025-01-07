@@ -14,16 +14,16 @@ env_args:
   barrier_function: exponential # exponential
   se_coef: 20 # 10-20 for step, 5 for exponential
   power_coef: 1
-  if_use_local_power_sum: False
+  if_use_local_power_sum: True
   if_sum_cost: False
 
   simulation_scenario:
     if_use_cuda_sim: True
     step_length: 1
     morphology: urban
-    number_of_ues: 1
+    number_of_ues: 2
     number_of_aps: 10
-    max_serving_ue_count: 1
+    max_serving_ue_count: 2
     max_measurment_ap_count: 10
     power_control_saved_model: /home/mzi/aps-mat/mat/envs/aps/lib/gnn_olp/trained_model/checkpoints/best_epoch=953.ckpt
     data_normalization_config: /home/mzi/aps-mat/mat/envs/aps/lib/gnn_olp/normalization_config.yaml

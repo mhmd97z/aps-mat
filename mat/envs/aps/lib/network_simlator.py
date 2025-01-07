@@ -58,10 +58,10 @@ class NetworkSimulator:
             # simulator should know everything!! => calculating channel coef with full obsevability
             G, masked_G, rho_d = self.channel_manager.calculate_coefs()  # adding small-scale measurements
             # pass the full G to power control for now | later, we'll use the partial channel coef
-            # allocated_power, embedding, graph = self.power_control.get_power_coef(G, rho_d, return_graph=True)
-            embedding, graph = None, None
-            _, allocated_power = self.power_control.get_optimal_sinr(G, rho_d) # allocating power
-            allocated_power = torch.from_numpy(allocated_power).to(G)
+            allocated_power, embedding, graph = self.power_control.get_power_coef(G, rho_d, return_graph=True)
+            # embedding, graph = None, None
+            # _, allocated_power = self.power_control.get_optimal_sinr(G, rho_d) # allocating power
+            # allocated_power = torch.from_numpy(allocated_power).to(G)
             # to simulate aps, we set the non-activated power coef to zero
             masked_allocated_power = allocated_power.clone().detach() * self.serving_mask
             # calc total power consumption

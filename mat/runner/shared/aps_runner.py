@@ -28,7 +28,6 @@ class ApsRunner(Runner):
                 self.trainer.policy.lr_decay(episode, episodes)
 
             for step in range(self.episode_length):
-                print("step: ", step)
                 # Sample actions
                 values, actions, action_log_probs, rnn_states, rnn_states_critic = self.collect(step)
 
@@ -55,7 +54,7 @@ class ApsRunner(Runner):
             # log information
             if episode % self.log_interval == 0:
                 end = time.time()
-                print("\n Map {} Algo {} Exp {} updates {}/{} episodes, total num timesteps {}/{}, FPS {}.\n"
+                print("\n Algo {} Exp {} updates {}/{} episodes, total num timesteps {}/{}, FPS {}.\n"
                         .format(self.all_args.map_name,
                                 self.algorithm_name,
                                 self.experiment_name,
