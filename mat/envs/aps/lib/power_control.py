@@ -202,4 +202,4 @@ class MrtPowerControl(PowerControl):
             * torch.sqrt(torch.tensor(1 / number_of_ues)).to(**self.tpdv)
         power_coef = torch.conj(G) / torch.abs(G) * power_budget
 
-        return power_coef, None
+        return power_coef, None, None
