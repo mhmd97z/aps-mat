@@ -28,34 +28,33 @@ class MobilityManager:
             self.mean_speed = 3.0 / 3.6 * 0.001 # in m/ms
             self.min_speed = 1.0 / 3.6 * 0.001
             self.max_speed = 7.0 / 3.6 * 0.001
-            # self.mean_speed = 70.0 / 3.6 * 0.001 # in m/ms
-            # self.min_speed = 50.0 / 3.6 * 0.001
-            # self.max_speed = 120.0 / 3.6 * 0.001
-            self.mean_movement_duration = 3000 # self.config.mean_pedestrian_movement_duration
-            self.mean_movement_pause = 3000 # self.config.mean_pedestrian_movement_pause
+            self.mean_movement_duration = 20000
+            self.mean_movement_pause = 3000
 
-        # elif config.ue_mobility_type == 'vehicular':
-        #     self.mean_speed = 30.0 / 3.6
-        #     self.min_speed = 10.0 / 3.6
-        #     self.max_speed = 50.0 / 3.6
+        elif self.config.ue_mobility_type == 'vehicular':
+            self.mean_speed = 70.0 / 3.6 * 0.001 # in m/ms
+            self.min_speed = 50.0 / 3.6 * 0.001
+            self.max_speed = 120.0 / 3.6 * 0.001
+            self.mean_movement_duration = 300000
+            self.mean_movement_pause = 30000
 
         else:
             raise ValueError('Invalid mobility type')
 
 
     def generate_angles(self, indices):
-        if self.config.ue_mobility_type == 'pedestrain':
-            self.mobility_angles[indices] = 2 * torch.pi * torch.rand(1, len(indices[0])).to(**self.tpdv)
-        else:
-            raise ValueError('Invalid mobility type')
+        # if self.config.ue_mobility_type == 'pedestrain':
+        self.mobility_angles[indices] = 2 * torch.pi * torch.rand(1, len(indices[0])).to(**self.tpdv)
+        # else:
+        #     raise ValueError('Invalid mobility type')
 
 
     def generate_speeds(self, indices):
-        if self.config.ue_mobility_type == 'pedestrain':
-            self.mobility_speeds[indices] = torch.distributions.Exponential(1 / self.mean_speed) \
-                .sample((1, len(indices[0]))).clamp(min=self.min_speed, max=self.max_speed).to(**self.tpdv)
-        else:
-            raise ValueError('Invalid mobility type')
+        # if self.config.ue_mobility_type == 'pedestrain':
+        self.mobility_speeds[indices] = torch.distributions.Exponential(1 / self.mean_speed) \
+            .sample((1, len(indices[0]))).clamp(min=self.min_speed, max=self.max_speed).to(**self.tpdv)
+        # else:
+        #     raise ValueError('Invalid mobility type')
 
 
     def step(self, curr_x, curr_y):
@@ -79,8 +78,8 @@ class MobilityManager:
             self.generate_speeds(to_start_indices)
             self.generate_angles(to_start_indices)
 
-        delta_x = self.mobility_speeds * torch.cos(self.mobility_angles)
-        delta_y = self.mobility_speeds * torch.sin(self.mobility_angles)
+        delta_x = self.mobility_speeds * self.config.simulation_timestep * torch.cos(self.mobility_angles) 
+        delta_y = self.mobility_speeds * self.config.simulation_timestep * torch.sin(self.mobility_angles) 
 
         tmp_x = curr_x + delta_x
         tmp_y = curr_y + delta_y
