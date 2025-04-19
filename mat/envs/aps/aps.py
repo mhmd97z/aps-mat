@@ -102,24 +102,23 @@ class Aps(gym.Env):
             obs = x.clone()
             state = obs.view(-1, obs.shape[0]*obs.shape[1]).repeat(obs.shape[0], 1).clone()
 
-        # reward calc
-        normalized_total_power_consumption = range_normalization(simulator_info['totoal_power_consumption'], 1, 5) # assumed range of power: 1, 5
-        if self.env_args.reward == 'weighted_sum':
-            normalized_min_sinr = range_normalization(simulator_info['sinr'].min(), -75., 25.) # assumed range of min_sinr: -75, 25
-            alpha = self.env_args.reward_power_consumption_coef
-            reward_ = ((1 - alpha) * normalized_min_sinr - alpha * normalized_total_power_consumption).mean()
-
-        elif self.env_args.reward == 'se_requirement':
+        if self.env_args.reward == 'se_requirement':
             # power cost
             mu = self.env_args.power_coef
-            consumed_power = torch.abs(simulator_info['power_coef']).mean(dim=0)
-            if self.env_args.simulation_scenario.if_power_in_db:
-                consumed_power = 10 * torch.log10(consumed_power)
-                consumed_power = torch.clip(consumed_power, min=-30) + 31
+            transmission_power_consumption = simulator_info['transmission_power_consumption'].mean(dim=0)
+            ap_circuit_power_consumption = simulator_info['ap_circuit_power_consumption'].mean(dim=0)
 
             if self.env_args.if_use_local_power_sum and not self.env_args.if_full_cooperation:
-                consumed_power = consumed_power.sum(dim=0, keepdim=True).expand_as(consumed_power)
-            power_coef_cost = mu * torch.reshape(consumed_power, (-1, 1))
+                transmission_power_consumption_ = transmission_power_consumption.sum(dim=0, keepdim=True).expand_as(transmission_power_consumption)
+            else:
+                transmission_power_consumption_ = transmission_power_consumption.clone()
+            ap_circuit_power_consumption_ = ap_circuit_power_consumption.unsqueeze(1).expand_as(transmission_power_consumption)
+
+            totoal_ = ap_circuit_power_consumption_ + transmission_power_consumption_
+            if self.env_args.simulation_scenario.if_power_in_db:
+                totoal_ = 10 * torch.log10(totoal_)
+                totoal_ = torch.clip(totoal_, min=-30) + 31
+            power_coef_cost = mu * torch.reshape(totoal_, (-1, 1))
 
             if self.env_args.if_connection_cost and not self.env_args.if_full_cooperation:
                 power_coef_cost += mu * serving_mask.reshape(power_coef_cost.shape).to(power_coef_cost)
@@ -140,8 +139,6 @@ class Aps(gym.Env):
                 se_violation_cost = torch.clip(torch.exp(-eta * constraints), max=500) # / (measurement_mask.sum(dim=0) + 1)
                 se_violation_cost = se_violation_cost.expand(self.num_aps, -1).clone()
                 se_violation_cost = torch.reshape(se_violation_cost, (-1, 1))
-            elif self.env_args.barrier_function == 'step':
-                se_violation_cost = beta * (constraints < 0).float()
             else:
                 NotImplementedError
 
@@ -149,7 +146,8 @@ class Aps(gym.Env):
                 reward = -(se_violation_cost + power_coef_cost).clone().detach()
             else:
                 reward = - se_violation_cost.clone().detach()
-                reward[se_violation_cost < 5.] = - power_coef_cost[se_violation_cost < 5.].clone().detach()
+                reward[se_violation_cost < float(self.env_args.sec_to_pc_switch_threshold)] = \
+                    - power_coef_cost[se_violation_cost < float(self.env_args.sec_to_pc_switch_threshold)].clone().detach()
 
         else:
             raise NotImplementedError
@@ -157,18 +155,23 @@ class Aps(gym.Env):
         mask = self.simulator.channel_manager.measurement_mask.clone().detach() \
             .flatten().to(torch.int32).unsqueeze(1)
 
+        truncated_sinr_std = simulator_info['sinr'].std(dim=1, unbiased=False).mean()
+        clean_sinr_std = simulator_info['clean_sinr'].std(dim=1, unbiased=False).mean()
+
         info = {
             'min_sinr': simulator_info['sinr'].mean(dim=0).min().mean(),
             'mean_sinr': simulator_info['sinr'].mean(),
-            'totoal_power_consumption': simulator_info['totoal_power_consumption'].mean(),
+            'truncated_sinr_std': truncated_sinr_std,
+            'clean_sinr_std': clean_sinr_std,
+            'transmission_power_consumption': transmission_power_consumption.sum(),
+            'circuit_power_consumption': ap_circuit_power_consumption.sum(),
+            'totoal_power_consumption': transmission_power_consumption.sum() + ap_circuit_power_consumption.sum(),
+            'active_ap_count': torch.sum(serving_mask.reshape((self.num_aps, self.num_ues)), dim=1).sign().sum().float(),
             'reward': reward.mean(),
             'mean_serving_ap_count': serving_mask.reshape((self.num_aps, self.num_ues)).sum(dim=0).float().mean(),
+            'mean_served_ue_count': serving_mask.reshape((self.num_aps, self.num_ues)).sum(dim=1).float().mean(),
             'se_violation_cost': se_violation_cost.mean(),
             'power_coef_cost': power_coef_cost.mean(),
-            'ue_x': self.simulator.channel_manager.loc_ues[0],
-            'ue_y': self.simulator.channel_manager.loc_ues[1],
-            'ap_x': self.simulator.channel_manager.loc_aps[0],
-            'ap_y': self.simulator.channel_manager.loc_aps[1]
         }
 
         return obs.cpu().numpy(), state.cpu().numpy(), reward.cpu().numpy(), mask.cpu().numpy(), info

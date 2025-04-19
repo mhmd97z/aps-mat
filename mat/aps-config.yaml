@@ -10,10 +10,11 @@ env_args:
   # reward
   reward: se_requirement
   reward_power_consumption_coef: 0.0
-  sinr_threshold: -10
+  sinr_threshold: 0
   barrier_function: exponential # exponential
   se_coef: 20 # 10-20 for step, 5 for exponential
   power_coef: 1
+  sec_to_pc_switch_threshold: 10.0
   if_use_local_power_sum: True
   if_sum_cost: False
   if_full_cooperation: False
@@ -21,19 +22,22 @@ env_args:
 
   simulation_scenario:
     if_use_cuda_sim: True
-    step_length: 20
     morphology: urban
     number_of_ues: 6
     number_of_aps: 20
     max_serving_ue_count: 6
     max_measurment_ap_count: 20
-    power_control_saved_model: /home/mzi/aps-mat/mat/envs/aps/lib/gnn_olp/trained_model/checkpoints/best_epoch=953.ckpt
-    data_normalization_config: /home/mzi/aps-mat/mat/envs/aps/lib/gnn_olp/normalization_config.yaml
+    power_control_saved_model: /home/mzi/aps-mat/mat/envs/aps/lib/gnn_olp/partial_model/epoch=507-step=773900.ckpt
+    data_normalization_config: /home/mzi/aps-mat/mat/envs/aps/lib/gnn_olp/partial_model/normalization_config.yaml
     precoding_algorithm: olp # olp, mrt
     seed: 100
     float_dtype_sim: torch.float32
     ap_radiation_power: 0.2
+    signal_transmission_efficiency: 0.4
+    ap_constant_power_consumption: 0.2
     if_sinr_in_db: True
     if_power_in_db: True
     ue_mobility_type: vehicular # pedestrain, vehicular
     simulation_timestep: 50 # 50 ms
+    step_length: 10
+    if_remove_off_aps_form_olp: True
